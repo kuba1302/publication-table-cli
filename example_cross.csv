@@ -1,0 +1,10 @@
+Data_Type,Model,MAPE,MAE,RMSE
+Type A,NN,10.5,2.1,4.3
+Type A,XGBoost,9.8,1.9,4.0
+Type A,Linear Regression,12.2,2.5,4.8
+Type B,NN,8.3,1.6,3.7
+Type B,XGBoost,7.9,1.5,3.5
+Type B,Linear Regression,9.5,2.0,4.0
+Type C,NN,11.7,2.3,4.5
+Type C,XGBoost,10.1,2.0,4.2
+Type C,Linear Regression,13.4,2.8,5.1
