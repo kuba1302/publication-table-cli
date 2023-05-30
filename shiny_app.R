@@ -9,6 +9,8 @@ library(shiny)
 library(shinyFiles)
 library(shiny)
 library(htmltools)
+library(webshot)
+
 
 FileReader <- R6Class("FileReader",
                       public = list(
@@ -154,39 +156,107 @@ SummaryTableCreator <- R6Class(
 )
 
 
-PlotCreator <- R6Class("PlotCreator",
-                       public = list(
-                         plot_histogram = function(column_name,
-                                                   data,
-                                                   title = NULL,
-                                                   footer = NULL,
-                                                   bins = 5) {
-                           # Check if column_name exists in the data
-                           if (!(column_name %in% names(data))) {
-                             stop(paste0("Column '", column_name, "' not found in data"))
-                           }
+PlotCreator <- R6Class(
+  "PlotCreator",
+  public = list(
+    plot_histogram = function(column_name,
+                              data,
+                              title = NULL,
+                              footer = NULL,
+                              bins = 5) {
+      if (!(column_name %in% names(data))) {
+        stop(paste0("Column '", column_name, "' not found in data"))
+      }
 
-                           # Create the histogram
-                           histogram <-
-                             ggplot(data, aes_string(column_name)) +
-                             geom_histogram(fill = 'blue',
-                                            color = 'black',
-                                            bins = bins) +
-                             theme_minimal()
+      histogram <-
+        ggplot(data, aes_string(column_name)) +
+        geom_histogram(fill = 'blue',
+                       color = 'black',
+                       bins = bins) +
+        theme_minimal()
 
-                           # Add title and footer if provided
-                           if (!is.null(title)) {
-                             histogram <- histogram + ggtitle(title)
-                           }
-                           if (!is.null(footer)) {
-                             histogram <- histogram + labs(caption = footer)
-                           }
+      if (!is.null(title)) {
+        histogram <- histogram + ggtitle(title)
+      }
+      if (!is.null(footer)) {
+        histogram <- histogram + labs(caption = footer)
+      }
 
-                           return(histogram)
-                         }
-                       ))
+      return(histogram)
+    },
+    plot_line = function(x_column_name,
+                         y_column_name,
+                         data,
+                         title = NULL,
+                         footer = NULL) {
+      if (!(x_column_name %in% names(data))) {
+        stop(paste0("Column '", x_column_name, "' not found in data"))
+      }
+      if (!(y_column_name %in% names(data))) {
+        stop(paste0("Column '", y_column_name, "' not found in data"))
+      }
+
+      lineplot <-
+        ggplot(data, aes_string(x_column_name, y_column_name)) +
+        geom_line(color = 'blue') +
+        theme_minimal()
+
+      if (!is.null(title)) {
+        lineplot <- lineplot + ggtitle(title)
+      }
+      if (!is.null(footer)) {
+        lineplot <- lineplot + labs(caption = footer)
+      }
+
+      return(lineplot)
+    },
+    plot_bar = function(name_column_name,
+                        value_column_name,
+                        data,
+                        title = NULL,
+                        footer = NULL) {
+      if (!(name_column_name %in% names(data))) {
+        stop(paste0("Column '", name_column_name, "' not found in data"))
+      }
+      if (!(value_column_name %in% names(data))) {
+        stop(paste0("Column '", value_column_name, "' not found in data"))
+      }
+
+      barplot <-
+        ggplot(data, aes_string(x = name_column_name, y = value_column_name)) +
+        geom_bar(stat = 'identity',
+                 fill = 'blue') +
+        theme_minimal()
+
+      if (!is.null(title)) {
+        barplot <- barplot + ggtitle(title)
+      }
+      if (!is.null(footer)) {
+        barplot <- barplot + labs(caption = footer)
+      }
+
+      return(barplot)
+    }
+  )
+)
+
 
 ui <- fluidPage(
+  tags$head(tags$style(
+    HTML(
+      "
+      .shiny-notification {
+        font-size: 20px;        /* Increase font size */
+        width: 30%;             /* Set width of the notification */
+        height: auto;           /* Set height of the notification */
+        position: fixed;        /* Make the position fixed */
+        top: 10%;               /* Set position from the top */
+        right: 17%;             /* Set position from the right */
+        transform: translateY(-50%); /* Adjust the position */
+      }
+    "
+    )
+  )),
   titlePanel("Visualization creator"),
   sidebarLayout(
     sidebarPanel(
@@ -207,7 +277,7 @@ ui <- fluidPage(
         radioButtons(
           "plot_type",
           "Choose plot type:",
-          choices = c("Summary", "Comparison", "Histogram")
+          choices = c("Summary", "Comparison", "Histogram", "Bar Plot", "Line Plot")
         ),
         h2("Image parameters:"),
         conditionalPanel(
@@ -217,7 +287,17 @@ ui <- fluidPage(
         ),
         conditionalPanel(
           condition = "input.plot_type == 'Comparison'",
-          checkboxInput("bold_max", "Bold max values", value = F)
+          checkboxInput("bold_max", "Bold max values", value = F),
+        ),
+        conditionalPanel(
+          condition = "input.plot_type == 'Bar Plot'",
+          textInput("name_column_name", "Name column"),
+          textInput("value_column_name", "Value column"),
+        ),
+        conditionalPanel(
+          condition = "input.plot_type == 'Line Plot'",
+          textInput("x_column_name", "X column"),
+          textInput("y_column_name", "Y column"),
         ),
         conditionalPanel(
           condition = "input.plot_type == 'Histogram'",
@@ -226,7 +306,11 @@ ui <- fluidPage(
         ),
         textInput("title", "Title:"),
         textInput("footer", "Footer:"),
-        actionButton("prepare", "Prepare plot")
+        actionButton("prepare", "Prepare plot"),
+        conditionalPanel(
+          condition = "output.plotAvailable",
+          downloadButton("downloadPlot", "Save Plot/Table to PNG")
+        ),
       )
     ),
     mainPanel(uiOutput("table"))
@@ -234,12 +318,14 @@ ui <- fluidPage(
 )
 
 
-? textInput
+
 server <- function(input, output) {
   fileReader <- FileReader$new()
-  ComparisonTableCreator <- ComparisonTableCreator$new()
-  SummaryTableCreator <- SummaryTableCreator$new()
+  comparisonTableCreator <- ComparisonTableCreator$new()
+  summaryTableCreator <- SummaryTableCreator$new()
   plotCreator = PlotCreator$new()
+
+  plot_table <- reactiveVal(NULL)
 
   fileUploaded <- reactive({
     return(!is.null(input$file))
@@ -248,6 +334,12 @@ server <- function(input, output) {
     return(fileUploaded())
   })
   outputOptions(output, 'fileUploaded', suspendWhenHidden = FALSE)
+
+  plotAvailable <- reactiveVal(FALSE)
+  output$plotAvailable <- reactive({
+    return(plotAvailable())
+  })
+  outputOptions(output, 'plotAvailable', suspendWhenHidden = FALSE)
 
   observeEvent(input$prepare, {
     req(input$file)
@@ -259,48 +351,80 @@ server <- function(input, output) {
     }
 
     if (!is.null(data)) {
-      if (input$plot_type == "Summary") {
-        if (input$continuous == F) {
-          table <-
-            SummaryTableCreator$plot(data,
-                                     title = input$title,
-                                     footer = input$footer)
+      table <- NULL
+      tryCatch({
+        if (input$plot_type == "Summary") {
+          if (input$continuous == F) {
+            table <-
+              SummaryTableCreator$plot(data,
+                                       title = input$title,
+                                       footer = input$footer)
+          }
+          else {
+            table <-
+              summaryTableCreator$plot_continuous_summary(
+                data,
+                title = input$title,
+                footer = input$footer,
+                group_by_col = input$group_by_col
+              )
+          }
+        } else if (input$plot_type == "Comparison") {
+          if (input$bold_max == F) {
+            table <-
+              comparisonTableCreator$comparison(data,
+                                                title = input$title,
+                                                footer = input$footer)
+          } else {
+            table <-
+              comparisonTableCreator$comparison_with_bold_max(data,
+                                                              title = input$title,
+                                                              footer = input$footer)
+          }
         }
-        else {
+        else if (input$plot_type == "Histogram") {
           table <-
-            SummaryTableCreator$plot_continuous_summary(
-              data,
+            plotCreator$plot_histogram(
+              column_name = input$column_name,
+              data = data,
               title = input$title,
               footer = input$footer,
-              group_by_col = input$group_by_col
+              bins = input$bins
             )
         }
-      } else if (input$plot_type == "Comparison") {
-        if (input$bold_max == F) {
+        else if (input$plot_type == "Bar Plot") {
           table <-
-            ComparisonTableCreator$comparison(data,
-                                              title = input$title,
-                                              footer = input$footer)
-        } else {
-          table <-
-            ComparisonTableCreator$comparison_with_bold_max(data,
-                                                            title = input$title,
-                                                            footer = input$footer)
+            plotCreator$plot_bar(
+              input$name_column_name,
+              input$value_column_name,
+              data = data,
+              title = input$title,
+              footer = input$footer
+            )
         }
-      }
-      else if (input$plot_type == "Histogram") {
-        table <-
-          plotCreator$plot_histogram(
-            column_name = input$column_name,
-            data = data,
-            title = input$title,
-            footer = input$footer,
-            bins = input$bins
-          )
+        else if (input$plot_type == "Line Plot") {
+          table <-
+            plotCreator$plot_line(
+              x_column_name = input$x_column_name,
+              y_column_name = input$y_column_name,
+              data = data,
+              title = input$title,
+              footer = input$footer
+            )
+        }
+        plot_table(table)
+        plotAvailable(TRUE)
 
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message),
+                         type = "error",
+                         duration = NULL)
+        plotAvailable(FALSE)
       }
+      )
 
       output$table <- renderUI({
+        req(table)
         if (is.ggplot(table)) {
           renderPlot({
             table
@@ -309,8 +433,49 @@ server <- function(input, output) {
           table %>% autofit() %>% htmltools_value()
         }
       })
+
+      # observeEvent(input$downloadPlot, {
+      #   output$downloadPlot <- downloadHandler(
+      #     filename = function() {
+      #       paste("plot", Sys.Date(), ".png", sep="")
+      #     },
+      #     content = function(file) {
+      #       # First, get the table object.
+      #       table <- output$table()
+      #
+      #       if (inherits(table, "ggplot")) {
+      #         # It's a plot. Save it using ggsave.
+      #         ggsave(file, plot = table, width = 10, height = 10)
+      #       } else if (inherits(table, "flextable")) {
+      #         # It's a flextable. Save it using save_as_image.
+      #         ft_img <- as_image(table)
+      #         image_write(ft_img, path = file, format = "png")
+      #       }
+      #     }
+      #   )
+      # }
+      # )
+      output$downloadPlot <- downloadHandler(
+        filename = function() {
+          paste("plot", Sys.Date(), ".png", sep="")
+        },
+        content = function(file) {
+          table <- plot_table()
+
+          if (inherits(table, "ggplot")) {
+            # It's a plot. Save it using ggsave.
+            ggsave(file, plot = table, width = 10, height = 10)
+          } else if (inherits(table, "flextable")) {
+            # It's a flextable. Save it using save_as_image.
+            save_as_image(table, file)
+          }
+        }
+      )
+
+
     }
   })
 }
+
 
 shinyApp(ui = ui, server = server)

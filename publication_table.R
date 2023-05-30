@@ -128,15 +128,22 @@ SummaryPlotter <- R6Class("SummaryPlotter",
 
 PlotCreator <- R6Class("PlotCreator",
                        public = list(
-                         plot_histogram = function(column_name, data, title = NULL, footer = NULL, bins = 5) {
+                         plot_histogram = function(column_name,
+                                                   data,
+                                                   title = NULL,
+                                                   footer = NULL,
+                                                   bins = 5) {
                            # Check if column_name exists in the data
                            if (!(column_name %in% names(data))) {
                              stop(paste0("Column '", column_name, "' not found in data"))
                            }
 
                            # Create the histogram
-                           histogram <- ggplot(data, aes_string(column_name)) +
-                             geom_histogram(fill = 'blue', color = 'black', bins = bins) +
+                           histogram <-
+                             ggplot(data, aes_string(column_name)) +
+                             geom_histogram(fill = 'blue',
+                                            color = 'black',
+                                            bins = bins) +
                              theme_minimal()
 
                            # Add title and footer if provided
@@ -148,13 +155,76 @@ PlotCreator <- R6Class("PlotCreator",
                            }
 
                            return(histogram)
+                         },
+                         plot_line = function(x_column_name,
+                                              y_column_name,
+                                              data,
+                                              title = NULL,
+                                              footer = NULL) {
+                           # Check if x_column_name and y_column_name exists in the data
+                           if (!(x_column_name %in% names(data))) {
+                             stop(paste0("Column '", x_column_name, "' not found in data"))
+                           }
+                           if (!(y_column_name %in% names(data))) {
+                             stop(paste0("Column '", y_column_name, "' not found in data"))
+                           }
+
+                           # Create the line plot
+                           lineplot <-
+                             ggplot(data, aes_string(x_column_name, y_column_name)) +
+                             geom_line(color = 'blue') +
+                             theme_minimal()
+
+                           # Add title and footer if provided
+                           if (!is.null(title)) {
+                             lineplot <- lineplot + ggtitle(title)
+                           }
+                           if (!is.null(footer)) {
+                             lineplot <- lineplot + labs(caption = footer)
+                           }
+
+                           return(lineplot)
+                         },
+                         plot_bar = function(name_column_name,
+                                             value_column_name,
+                                             data,
+                                             title = NULL,
+                                             footer = NULL) {
+                           # Check if name_column_name and value_column_name exists in the data
+                           if (!(name_column_name %in% names(data))) {
+                             stop(paste0("Column '", name_column_name, "' not found in data"))
+                           }
+                           if (!(value_column_name %in% names(data))) {
+                             stop(paste0("Column '", value_column_name, "' not found in data"))
+                           }
+
+                           # Create the bar plot
+                           barplot <-
+                             ggplot(data, aes_string(x = name_column_name, y = value_column_name)) +
+                             geom_bar(stat = 'identity', fill = 'blue') +
+                             theme_minimal()
+
+                           # Add title and footer if provided
+                           if (!is.null(title)) {
+                             barplot <- barplot + ggtitle(title)
+                           }
+                           if (!is.null(footer)) {
+                             barplot <- barplot + labs(caption = footer)
+                           }
+
+                           return(barplot)
                          }
-                       )
-)
+                       ))
+
+
 ?geom_histogram
 plot_creator = PlotCreator$new()
 is.ggplot(plot_creator$plot_histogram("MAPE", data = cross_data, bins=3, title = "Title"))
 plot_creator$plot_histogram("MAPE", data = cross_data, bins=3, title = "Title")
+plot_creator$plot_line("MAPE", "MAE", data = cross_data, title = "Title")
+
+data_bar <- file_reader$from_csv("example_bar.csv")
+plot_creator$plot_bar("name", "value", data_bar)
 ? as_chunk
 
 df_describe = file_reader$from_csv("example_describe.csv")
@@ -167,7 +237,7 @@ ft_1 <- continuous_summary(iris, names(iris)[1:4], by = NULL,
 ft_1
 iris
 colnames(df_describe)
-continuous_summary(df_describe)
+continuous_summary(df_describe, by="newborn_gender")
 summary_plotter <- SummaryPlotter$new()
 summary_plotter$plot(df_describe, title = "Dataset summary", footer = "Source: Own work")
 
