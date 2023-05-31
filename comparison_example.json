@@ -1,0 +1,17 @@
+[
+  {"Model": "XGBoost", "MAPE": 10.2, "MAE": 2.1, "RMSE": 3.5},
+  {"Model": "Neural Network", "MAPE": 12.8, "MAE": 2.7, "RMSE": 4.2},
+  {"Model": "Decision Tree", "MAPE": 15.5, "MAE": 3.4, "RMSE": 4.8},
+  {"Model": "Linear Regression", "MAPE": 9.6, "MAE": 2.0, "RMSE": 15},
+  {"Model": "Random Forest", "MAPE": 11.5, "MAE": 2.4, "RMSE": 4.1},
+  {"Model": "SVM", "MAPE": 13.9, "MAE": 2.9, "RMSE": 5.2},
+  {"Model": "Gradient Boosting", "MAPE": 14.7, "MAE": 3.1, "RMSE": 4.5},
+  {"Model": "AdaBoost", "MAPE": 16.3, "MAE": 3.6, "RMSE": 5.1},
+  {"Model": "Logistic Regression", "MAPE": 10.9, "MAE": 2.3, "RMSE": 3.7},
+  {"Model": "Naive Bayes", "MAPE": 14.2, "MAE": 3.0, "RMSE": 4.6},
+  {"Model": "K-Nearest Neighbors", "MAPE": 13.5, "MAE": 2.8, "RMSE": 4.3},
+  {"Model": "Lasso Regression", "MAPE": 9.9, "MAE": 2.1, "RMSE": 15.2},
+  {"Model": "Ridge Regression", "MAPE": 10.3, "MAE": 2.2, "RMSE": 15.1},
+  {"Model": "ElasticNet", "MAPE": 10.0, "MAE": 2.1, "RMSE": 15.3},
+  {"Model": "Deep Learning", "MAPE": 13.0, "MAE": 2.8, "RMSE": 4.4}
+]

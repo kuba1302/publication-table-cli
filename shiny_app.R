@@ -30,8 +30,9 @@ style_table <-
            footer = NULL,
            title_size = 15) {
     if (!is.null(title)) {
+      title <- paste0("\n\n", title)
       ft <- ft %>%
-        set_caption(ft, caption = as_paragraph(as_chunk(title, props = fp_text(font.size = title_size))))
+        set_caption(caption = as_paragraph(as_chunk(title, props = fp_text(font.size = title_size))))
     }
 
     if (!is.null(footer)) {
@@ -39,6 +40,12 @@ style_table <-
         add_footer_lines(footer) %>%
         italic(part = "footer")
     }
+
+    ft <-
+      ft %>%
+      bg(bg = "white") %>%
+      bg(bg = "white", part = "header") %>%
+      bg(bg = "white", part = "footer")
 
     return(ft)
   }
@@ -102,21 +109,11 @@ SummaryTableCreator <- R6Class(
                     title = NULL,
                     footer = NULL,
                     title_size = 15) {
-      data <- as.data.frame(t(data))
+      df_summary <- data
+      # add helper col with const value, since continuous_summary require 'by' argument
+      df_summary["Column"] = ""
 
-      data <-
-        rownames_to_column(data, var = "Feature name")
-
-      #    colnames(data)[-1] <-
-      #   c("Count", "Mean", "Std", "Min", "25%", "50%", "75%", "Max")
-
-      ft <- flextable(data)
-
-      ft <- ft %>%
-        autofit() %>%
-        bold(part = "header") %>%
-        bold(j = "Feature name")
-
+      ft <- continuous_summary(df_summary, by = "Column")
       ft <-
         style_table(ft,
                     title = title,
@@ -127,7 +124,7 @@ SummaryTableCreator <- R6Class(
         ft_img <- as_image(ft)
         image_write(ft_img, path = save_path, format = "png")
       }
-
+      print("DUPA")
       return(ft)
     },
     plot_continuous_summary = function(data,
@@ -156,6 +153,8 @@ SummaryTableCreator <- R6Class(
 )
 
 
+
+
 PlotCreator <- R6Class(
   "PlotCreator",
   public = list(
@@ -167,13 +166,14 @@ PlotCreator <- R6Class(
       if (!(column_name %in% names(data))) {
         stop(paste0("Column '", column_name, "' not found in data"))
       }
-
+      bins <- as.integer(bins)
       histogram <-
         ggplot(data, aes_string(column_name)) +
         geom_histogram(fill = 'blue',
                        color = 'black',
                        bins = bins) +
-        theme_minimal()
+        theme_minimal() +
+        theme(plot.background = element_rect(fill = 'white', colour = 'white'))
 
       if (!is.null(title)) {
         histogram <- histogram + ggtitle(title)
@@ -199,7 +199,8 @@ PlotCreator <- R6Class(
       lineplot <-
         ggplot(data, aes_string(x_column_name, y_column_name)) +
         geom_line(color = 'blue') +
-        theme_minimal()
+        theme_minimal() +
+        theme(plot.background = element_rect(fill = 'white', colour = 'white'))
 
       if (!is.null(title)) {
         lineplot <- lineplot + ggtitle(title)
@@ -226,7 +227,8 @@ PlotCreator <- R6Class(
         ggplot(data, aes_string(x = name_column_name, y = value_column_name)) +
         geom_bar(stat = 'identity',
                  fill = 'blue') +
-        theme_minimal()
+        theme_minimal() +
+        theme(plot.background = element_rect(fill = 'white', colour = 'white'))
 
       if (!is.null(title)) {
         barplot <- barplot + ggtitle(title)
@@ -282,8 +284,11 @@ ui <- fluidPage(
         h2("Image parameters:"),
         conditionalPanel(
           condition = "input.plot_type == 'Summary'",
-          checkboxInput("continuous", "Continuous", value = F),
-          textInput("group_by_col", "Group by col:"),
+          checkboxInput("groupped", "Group by column", value = F),
+          conditionalPanel(
+            condition = "input.groupped == true",
+            textInput("group_by_col", "Group by col:")
+          )
         ),
         conditionalPanel(
           condition = "input.plot_type == 'Comparison'",
@@ -354,9 +359,9 @@ server <- function(input, output) {
       table <- NULL
       tryCatch({
         if (input$plot_type == "Summary") {
-          if (input$continuous == F) {
+          if (input$groupped == F) {
             table <-
-              SummaryTableCreator$plot(data,
+              summaryTableCreator$plot(data,
                                        title = input$title,
                                        footer = input$footer)
           }
@@ -420,8 +425,7 @@ server <- function(input, output) {
                          type = "error",
                          duration = NULL)
         plotAvailable(FALSE)
-      }
-      )
+      })
 
       output$table <- renderUI({
         req(table)
@@ -434,37 +438,19 @@ server <- function(input, output) {
         }
       })
 
-      # observeEvent(input$downloadPlot, {
-      #   output$downloadPlot <- downloadHandler(
-      #     filename = function() {
-      #       paste("plot", Sys.Date(), ".png", sep="")
-      #     },
-      #     content = function(file) {
-      #       # First, get the table object.
-      #       table <- output$table()
-      #
-      #       if (inherits(table, "ggplot")) {
-      #         # It's a plot. Save it using ggsave.
-      #         ggsave(file, plot = table, width = 10, height = 10)
-      #       } else if (inherits(table, "flextable")) {
-      #         # It's a flextable. Save it using save_as_image.
-      #         ft_img <- as_image(table)
-      #         image_write(ft_img, path = file, format = "png")
-      #       }
-      #     }
-      #   )
-      # }
-      # )
       output$downloadPlot <- downloadHandler(
         filename = function() {
-          paste("plot", Sys.Date(), ".png", sep="")
+          paste("plot", Sys.Date(), ".png", sep = "")
         },
         content = function(file) {
           table <- plot_table()
 
           if (inherits(table, "ggplot")) {
             # It's a plot. Save it using ggsave.
-            ggsave(file, plot = table, width = 10, height = 10)
+            ggsave(file,
+                   plot = table,
+                   width = 10,
+                   height = 10)
           } else if (inherits(table, "flextable")) {
             # It's a flextable. Save it using save_as_image.
             save_as_image(table, file)

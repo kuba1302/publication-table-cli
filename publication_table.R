@@ -216,19 +216,64 @@ PlotCreator <- R6Class("PlotCreator",
                          }
                        ))
 
+SummaryTableCreator <- R6Class(
+  "SummaryTableCreator",
+  public = list(
+    plot = function(data,
+                    save_path = NULL,
+                    title = NULL,
+                    footer = NULL,
+                    title_size = 15) {
+      df_summary <- data
+      # add helper col with const value, since continuous_summary require 'by' argument
+      df_summary["Column"] = ""
 
-?geom_histogram
-plot_creator = PlotCreator$new()
-is.ggplot(plot_creator$plot_histogram("MAPE", data = cross_data, bins=3, title = "Title"))
-plot_creator$plot_histogram("MAPE", data = cross_data, bins=3, title = "Title")
-plot_creator$plot_line("MAPE", "MAE", data = cross_data, title = "Title")
+      ft <- continuous_summary(df_summary, by = "Column")
+      ft <-
+        style_table(ft,
+                    title = title,
+                    footer = footer,
+                    title_size = title_size)
 
-data_bar <- file_reader$from_csv("example_bar.csv")
-plot_creator$plot_bar("name", "value", data_bar)
-? as_chunk
+      if (!is.null(save_path)) {
+        ft_img <- as_image(ft)
+        image_write(ft_img, path = save_path, format = "png")
+      }
+      print("DUPA")
+      return(ft)
+    },
+    plot_continuous_summary = function(data,
+                                       group_by_col,
+                                       save_path = NULL,
+                                       title = NULL,
+                                       footer = NULL,
+                                       title_size = 15) {
+      ft <- continuous_summary(data, by = group_by_col)
+      ft <-
+        style_table(ft,
+                    title = title,
+                    footer = footer,
+                    title_size = title_size)
+
+      if (!is.null(save_path)) {
+        ft_img <- as_image(ft)
+        image_write(ft_img, path = save_path, format = "png")
+      }
+
+      return(ft)
+    }
+  )
+
+
+)
 
 df_describe = file_reader$from_csv("example_describe.csv")
+
+summary_Test = SummaryTableCreator$new()
+summary_Test$plot(df_describe)
 df_describe
+flextable(as.data.frame(summary(df_describe)))
+summarizor(df_describe)
 names(df_describe)
 summary <- continuous_summary(df_describe[, c("mother_body_mass_index", "mother_marital_status", "mother_delivery_weight")])
 
