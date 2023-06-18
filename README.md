@@ -1,4 +1,4 @@
-# publication-table-cli
+# publication-table-creator
 
 ### Data Cleaning and Visualization Creator
 This project provides an R Shiny application to perform data cleaning and visualization tasks. It provides various features such as data importing, data cleaning, and data visualization using different types of plots and tables. The users can upload their own CSV or JSON files and apply the desired operations.
