@@ -27,12 +27,12 @@ To run the application, you can simply clone the repository, open the R script i
 
 The application should automatically launch in a web browser, allowing you to interact with it.
 
-###Features
+### Features
 The main features of the application are:
 
 #### Data Importing: The application supports importing of CSV and JSON files.
 
-####Data Cleaning: The application provides several data cleaning options, such as removal of NAs/NaNs, specific columns, or duplicate rows.
+#### Data Cleaning: The application provides several data cleaning options, such as removal of NAs/NaNs, specific columns, or duplicate rows.
 
 #### Data Visualization: The application provides several options for visualizing the data, including summary tables, comparison tables, and different types of plots (histogram, bar plot, line plot).
 
