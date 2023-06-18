@@ -11,7 +11,6 @@ library(shiny)
 library(htmltools)
 library(webshot)
 
-
 FileReader <- R6Class("FileReader",
                       public = list(
                         from_csv = function(file_path) {
@@ -24,73 +23,51 @@ FileReader <- R6Class("FileReader",
                         }
                       ))
 
-style_table <-
-  function(ft,
-           title = NULL,
-           footer = NULL,
-           title_size = 15) {
-    if (!is.null(title)) {
-      title <- paste0("\n\n", title)
-      ft <- ft %>%
-        set_caption(caption = as_paragraph(as_chunk(title, props = fp_text(font.size = title_size))))
-    }
-
-    if (!is.null(footer)) {
-      ft <- ft %>%
-        add_footer_lines(footer) %>%
-        italic(part = "footer")
-    }
-
-    ft <-
-      ft %>%
-      bg(bg = "white") %>%
-      bg(bg = "white", part = "header") %>%
-      bg(bg = "white", part = "footer")
-
-    return(ft)
+style_table <- function(ft, title = NULL, footer = NULL, title_size = 15) {
+  if (!is.null(title)) {
+    title <- paste0("\n\n", title)
+    ft <- ft %>%
+      set_caption(caption = as_paragraph(as_chunk(title, props = fp_text(font.size = title_size))))
   }
+
+  if (!is.null(footer)) {
+    ft <- ft %>%
+      add_footer_lines(footer) %>%
+      italic(part = "footer")
+  }
+
+  ft <- ft %>%
+    bg(bg = "white") %>%
+    bg(bg = "white", part = "header") %>%
+    bg(bg = "white", part = "footer")
+
+  return(ft)
+}
+
 ComparisonTableCreator <- R6Class(
   "ComparisonTableCreator",
   public = list(
-    comparison_with_bold_max = function(data,
-                                        save_path = NULL,
-                                        title = NULL,
-                                        footer = NULL,
-                                        title_size = 12) {
+    comparison_with_bold_max = function(data, save_path = NULL, title = NULL, footer = NULL, title_size = 12) {
       ft <- flextable(data)
       for (col in colnames(data)) {
         if (is.numeric(data[[col]])) {
-          max_val <- max(data[[col]])
-          max_row <-
-            which(data[[col]] == max_val)
+          max_val <- min(data[[col]])
+          max_row <- which(data[[col]] == max_val)
           ft <- ft %>%
             bold(i = max_row, j = col, part = "body")
         }
       }
-      ft <-
-        style_table(ft,
-                    title = title,
-                    footer = footer,
-                    title_size = title_size)
+      ft <- style_table(ft, title = title, footer = footer, title_size = title_size)
 
       if (!is.null(save_path)) {
         save_as_image(ft, save_path)
       }
 
       return(ft)
-
     },
-    comparison = function(data,
-                          save_path = NULL,
-                          title = NULL,
-                          footer = NULL,
-                          title_size = 12) {
+    comparison = function(data, save_path = NULL, title = NULL, footer = NULL, title_size = 12) {
       ft <- flextable(data)
-      ft <-
-        style_table(ft,
-                    title = title,
-                    footer = footer,
-                    title_size = title_size)
+      ft <- style_table(ft, title = title, footer = footer, title_size = title_size)
 
       if (!is.null(save_path)) {
         save_as_image(ft, save_path)
@@ -104,41 +81,22 @@ ComparisonTableCreator <- R6Class(
 SummaryTableCreator <- R6Class(
   "SummaryTableCreator",
   public = list(
-    plot = function(data,
-                    save_path = NULL,
-                    title = NULL,
-                    footer = NULL,
-                    title_size = 15) {
+    plot = function(data, save_path = NULL, title = NULL, footer = NULL, title_size = 15) {
       df_summary <- data
-      # add helper col with const value, since continuous_summary require 'by' argument
-      df_summary["Column"] = ""
-
+      df_summary["Column"] <- ""
       ft <- continuous_summary(df_summary, by = "Column")
-      ft <-
-        style_table(ft,
-                    title = title,
-                    footer = footer,
-                    title_size = title_size)
+      ft <- style_table(ft, title = title, footer = footer, title_size = title_size)
 
       if (!is.null(save_path)) {
         ft_img <- as_image(ft)
         image_write(ft_img, path = save_path, format = "png")
       }
-      print("DUPA")
+
       return(ft)
     },
-    plot_continuous_summary = function(data,
-                                       group_by_col,
-                                       save_path = NULL,
-                                       title = NULL,
-                                       footer = NULL,
-                                       title_size = 15) {
+    plot_continuous_summary = function(data, group_by_col, save_path = NULL, title = NULL, footer = NULL, title_size = 15) {
       ft <- continuous_summary(data, by = group_by_col)
-      ft <-
-        style_table(ft,
-                    title = title,
-                    footer = footer,
-                    title_size = title_size)
+      ft <- style_table(ft, title = title, footer = footer, title_size = title_size)
 
       if (!is.null(save_path)) {
         ft_img <- as_image(ft)
@@ -148,30 +106,18 @@ SummaryTableCreator <- R6Class(
       return(ft)
     }
   )
-
-
 )
-
-
-
 
 PlotCreator <- R6Class(
   "PlotCreator",
   public = list(
-    plot_histogram = function(column_name,
-                              data,
-                              title = NULL,
-                              footer = NULL,
-                              bins = 5) {
+    plot_histogram = function(column_name, data, title = NULL, footer = NULL, bins = 5) {
       if (!(column_name %in% names(data))) {
         stop(paste0("Column '", column_name, "' not found in data"))
       }
       bins <- as.integer(bins)
-      histogram <-
-        ggplot(data, aes_string(column_name)) +
-        geom_histogram(fill = 'blue',
-                       color = 'black',
-                       bins = bins) +
+      histogram <- ggplot(data, aes_string(column_name)) +
+        geom_histogram(fill = 'blue', color = 'black', bins = bins) +
         theme_minimal() +
         theme(plot.background = element_rect(fill = 'white', colour = 'white'))
 
@@ -184,11 +130,7 @@ PlotCreator <- R6Class(
 
       return(histogram)
     },
-    plot_line = function(x_column_name,
-                         y_column_name,
-                         data,
-                         title = NULL,
-                         footer = NULL) {
+    plot_line = function(x_column_name, y_column_name, data, title = NULL, footer = NULL) {
       if (!(x_column_name %in% names(data))) {
         stop(paste0("Column '", x_column_name, "' not found in data"))
       }
@@ -196,8 +138,7 @@ PlotCreator <- R6Class(
         stop(paste0("Column '", y_column_name, "' not found in data"))
       }
 
-      lineplot <-
-        ggplot(data, aes_string(x_column_name, y_column_name)) +
+      lineplot <- ggplot(data, aes_string(x_column_name, y_column_name)) +
         geom_line(color = 'blue') +
         theme_minimal() +
         theme(plot.background = element_rect(fill = 'white', colour = 'white'))
@@ -211,11 +152,7 @@ PlotCreator <- R6Class(
 
       return(lineplot)
     },
-    plot_bar = function(name_column_name,
-                        value_column_name,
-                        data,
-                        title = NULL,
-                        footer = NULL) {
+    plot_bar = function(name_column_name, value_column_name, data, title = NULL, footer = NULL) {
       if (!(name_column_name %in% names(data))) {
         stop(paste0("Column '", name_column_name, "' not found in data"))
       }
@@ -223,10 +160,8 @@ PlotCreator <- R6Class(
         stop(paste0("Column '", value_column_name, "' not found in data"))
       }
 
-      barplot <-
-        ggplot(data, aes_string(x = name_column_name, y = value_column_name)) +
-        geom_bar(stat = 'identity',
-                 fill = 'blue') +
+      barplot <- ggplot(data, aes_string(x = name_column_name, y = value_column_name)) +
+        geom_bar(stat = 'identity', fill = 'blue') +
         theme_minimal() +
         theme(plot.background = element_rect(fill = 'white', colour = 'white'))
 
@@ -242,24 +177,23 @@ PlotCreator <- R6Class(
   )
 )
 
-
 ui <- fluidPage(
   tags$head(tags$style(
     HTML(
       "
       .shiny-notification {
-        font-size: 20px;        /* Increase font size */
-        width: 30%;             /* Set width of the notification */
-        height: auto;           /* Set height of the notification */
-        position: fixed;        /* Make the position fixed */
-        top: 10%;               /* Set position from the top */
-        right: 17%;             /* Set position from the right */
-        transform: translateY(-50%); /* Adjust the position */
+        font-size: 20px;
+        width: 30%;
+        height: auto;
+        position: fixed;
+        top: 10%;
+        right: 17%;
+        transform: translateY(-50%);
       }
     "
     )
   )),
-  titlePanel("Visualization creator"),
+  titlePanel("Data Cleaning and Visualization Creator"),
   sidebarLayout(
     sidebarPanel(
       fileInput(
@@ -276,6 +210,21 @@ ui <- fluidPage(
       ),
       conditionalPanel(
         condition = "output.fileUploaded",
+        # Data Cleaning Section
+        h3("Data Cleaning"),
+        checkboxInput("remove_nans", "Remove NAs/NaNs"),
+        checkboxInput("remove_columns", "Remove Columns"),
+        conditionalPanel(
+          condition = "input.remove_columns == true",
+          textInput("columns_to_remove", "Columns to Remove (comma-separated):")
+        ),
+        checkboxInput("remove_duplicates", "Remove Duplicates"),
+        br(),
+        actionButton("clean_data", "Clean Data"),
+        br(),
+
+        # Plotting Section
+        h3("Visualization"),
         radioButtons(
           "plot_type",
           "Choose plot type:",
@@ -284,15 +233,15 @@ ui <- fluidPage(
         h2("Image parameters:"),
         conditionalPanel(
           condition = "input.plot_type == 'Summary'",
-          checkboxInput("groupped", "Group by column", value = F),
+          checkboxInput("grouped", "Group by column", value = FALSE),
           conditionalPanel(
-            condition = "input.groupped == true",
-            textInput("group_by_col", "Group by col:")
+            condition = "input.grouped == true",
+            textInput("group_by_col", "Group by column:")
           )
         ),
         conditionalPanel(
           condition = "input.plot_type == 'Comparison'",
-          checkboxInput("bold_max", "Bold max values", value = F),
+          checkboxInput("bold_max", "Bold min values", value = FALSE),
         ),
         conditionalPanel(
           condition = "input.plot_type == 'Bar Plot'",
@@ -322,14 +271,13 @@ ui <- fluidPage(
   )
 )
 
-
-
 server <- function(input, output) {
   fileReader <- FileReader$new()
   comparisonTableCreator <- ComparisonTableCreator$new()
   summaryTableCreator <- SummaryTableCreator$new()
-  plotCreator = PlotCreator$new()
+  plotCreator <- PlotCreator$new()
 
+  data_for_plot <- reactiveVal(NULL)
   plot_table <- reactiveVal(NULL)
 
   fileUploaded <- reactive({
@@ -347,8 +295,42 @@ server <- function(input, output) {
   outputOptions(output, 'plotAvailable', suspendWhenHidden = FALSE)
 
   observeEvent(input$prepare, {
+    req(plot_table(), input$file)
+
+    table <- plot_table()
+
+    if (is.null(table)) {
+      return(NULL)
+    }
+
+    output$table <- renderUI({
+      if (is.ggplot(table)) {
+        renderPlot({
+          table
+        })
+      } else {
+        table %>% autofit() %>% htmltools_value()
+      }
+    })
+
+    output$downloadPlot <- downloadHandler(
+      filename = function() {
+        paste("plot", Sys.Date(), ".png", sep = "")
+      },
+      content = function(file) {
+        if (inherits(table, "ggplot")) {
+          ggsave(file, plot = table, width = 10, height = 10)
+        } else if (inherits(table, "flextable")) {
+          save_as_image(table, file)
+        }
+      }
+    )
+  })
+
+  observeEvent(input$clean_data, {
     req(input$file)
     data <- NULL
+
     if (grepl(".csv$", input$file$name)) {
       data <- fileReader$from_csv(input$file$datapath)
     } else if (grepl(".json$", input$file$name)) {
@@ -356,112 +338,58 @@ server <- function(input, output) {
     }
 
     if (!is.null(data)) {
-      table <- NULL
-      tryCatch({
-        if (input$plot_type == "Summary") {
-          if (input$groupped == F) {
-            table <-
-              summaryTableCreator$plot(data,
-                                       title = input$title,
-                                       footer = input$footer)
-          }
-          else {
-            table <-
-              summaryTableCreator$plot_continuous_summary(
-                data,
-                title = input$title,
-                footer = input$footer,
-                group_by_col = input$group_by_col
-              )
-          }
-        } else if (input$plot_type == "Comparison") {
-          if (input$bold_max == F) {
-            table <-
-              comparisonTableCreator$comparison(data,
-                                                title = input$title,
-                                                footer = input$footer)
-          } else {
-            table <-
-              comparisonTableCreator$comparison_with_bold_max(data,
-                                                              title = input$title,
-                                                              footer = input$footer)
-          }
-        }
-        else if (input$plot_type == "Histogram") {
-          table <-
-            plotCreator$plot_histogram(
-              column_name = input$column_name,
-              data = data,
-              title = input$title,
-              footer = input$footer,
-              bins = input$bins
-            )
-        }
-        else if (input$plot_type == "Bar Plot") {
-          table <-
-            plotCreator$plot_bar(
-              input$name_column_name,
-              input$value_column_name,
-              data = data,
-              title = input$title,
-              footer = input$footer
-            )
-        }
-        else if (input$plot_type == "Line Plot") {
-          table <-
-            plotCreator$plot_line(
-              x_column_name = input$x_column_name,
-              y_column_name = input$y_column_name,
-              data = data,
-              title = input$title,
-              footer = input$footer
-            )
-        }
-        plot_table(table)
-        plotAvailable(TRUE)
+      if (input$remove_nans) {
+        data <- data %>% na.omit()
+      }
 
-      }, error = function(e) {
-        showNotification(paste("Error:", e$message),
-                         type = "error",
-                         duration = NULL)
-        plotAvailable(FALSE)
-      })
+      if (input$remove_columns && !is.null(input$columns_to_remove) && nchar(trimws(input$columns_to_remove)) > 0) {
+        columns_to_remove <- strsplit(input$columns_to_remove, ",\\s*")[[1]]
+        data <- data[, !names(data) %in% columns_to_remove]
+      }
 
-      output$table <- renderUI({
-        req(table)
-        if (is.ggplot(table)) {
-          renderPlot({
-            table
-          })
-        } else {
-          table %>% autofit() %>% htmltools_value()
-        }
-      })
+      if (input$remove_duplicates) {
+        data <- data %>% distinct()
+      }
 
-      output$downloadPlot <- downloadHandler(
-        filename = function() {
-          paste("plot", Sys.Date(), ".png", sep = "")
-        },
-        content = function(file) {
-          table <- plot_table()
-
-          if (inherits(table, "ggplot")) {
-            # It's a plot. Save it using ggsave.
-            ggsave(file,
-                   plot = table,
-                   width = 10,
-                   height = 10)
-          } else if (inherits(table, "flextable")) {
-            # It's a flextable. Save it using save_as_image.
-            save_as_image(table, file)
-          }
-        }
-      )
-
-
+      data_for_plot(data)
+      # plotAvailable(FALSE)
     }
   })
-}
 
+  observeEvent(input$prepare, {
+    req(data_for_plot(), input$file)
+
+    data <- data_for_plot()
+    table <- NULL
+
+    tryCatch({
+      if (input$plot_type == "Summary") {
+        if (input$grouped == FALSE) {
+          table <- summaryTableCreator$plot(data, title = input$title, footer = input$footer)
+        } else {
+          table <- summaryTableCreator$plot_continuous_summary(data, group_by_col = input$group_by_col, title = input$title, footer = input$footer)
+        }
+      } else if (input$plot_type == "Comparison") {
+        if (input$bold_max == FALSE) {
+          table <- comparisonTableCreator$comparison(data, title = input$title, footer = input$footer)
+        } else {
+          table <- comparisonTableCreator$comparison_with_bold_max(data, title = input$title, footer = input$footer)
+        }
+      } else if (input$plot_type == "Histogram") {
+        table <- plotCreator$plot_histogram(input$column_name, data, title = input$title, footer = input$footer, bins = input$bins)
+      } else if (input$plot_type == "Bar Plot") {
+        table <- plotCreator$plot_bar(input$name_column_name, input$value_column_name, data, title = input$title, footer = input$footer)
+      } else if (input$plot_type == "Line Plot") {
+        table <- plotCreator$plot_line(input$x_column_name, input$y_column_name, data, title = input$title, footer = input$footer)
+      }
+
+      plot_table(table)
+      plotAvailable(TRUE)
+    }, error = function(e) {
+      showNotification(paste("Error:", e$message), type = "error", duration = NULL)
+      plotAvailable(FALSE)
+    })
+  })
+}
 
 shinyApp(ui = ui, server = server)
